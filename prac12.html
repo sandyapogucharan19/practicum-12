@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevStream - Live Weather API (Prac 12)</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f3ff;
+            color: #312e81;
+            padding: 30px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 820px;
+            margin: auto;
+            background: white;
+            padding: 28px;
+            border-radius: 12px;
+            border: 2px solid #a78bfa;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            flex: 1;
+            min-width: 150px;
+            padding: 11px;
+            border: 1px solid #c4b5fd;
+            border-radius: 6px;
+        }
+
+        button {
+            padding: 11px 20px;
+            background-color: #7c3aed;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #5b21b6;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 18px;
+        }
+
+        .weather-card {
+            background-color: #ede9fe;
+            border-left: 5px solid #7c3aed;
+            padding: 18px;
+            border-radius: 8px;
+        }
+
+        .weather-card h3 {
+            margin-top: 0;
+            color: #5b21b6;
+            font-size: 1rem;
+        }
+
+        .value {
+            font-size: 1.7rem;
+            font-weight: bold;
+            color: #6d28d9;
+        }
+
+        .status {
+            margin-top: 20px;
+            background-color: #ddd6fe;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        #console {
+            background-color: #2e1065;
+            color: #ddd6fe;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            margin-top: 20px;
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .container {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h2>💻 DevStream - Live Weather Dashboard</h2>
+
+        <p>
+            Explore live weather data using API integration.
+            Enter a city name, latitude and longitude to view
+            temperature, humidity and wind speed.
+        </p>
+
+        <div class="controls">
+            <input type="text" id="cityName"
+                   placeholder="Enter city name" value="Coimbatore">
+
+            <input type="text" id="latitude"
+                   placeholder="Latitude" value="11.0168">
+
+            <input type="text" id="longitude"
+                   placeholder="Longitude" value="76.9558">
+
+            <button onclick="getWeatherData()">
+                Get Weather Data
+            </button>
+        </div>
+
+        <div id="weatherOutput"></div>
+
+        <div id="console">
+            System Log: Ready to connect to Weather API...
+        </div>
+
+    </div>
+
+    <script>
+        function showLog(message) {
+            const time = new Date().toLocaleTimeString();
+
+            console.log(message);
+
+            document.getElementById("console").innerText =
+                "System Log [" + time + "]: " + message;
+        }
+
+        async function getWeatherData() {
+
+            const city = document.getElementById("cityName").value.trim();
+            const latText = document.getElementById("latitude").value.trim();
+            const lonText = document.getElementById("longitude").value.trim();
+
+            const lat = Number(latText);
+            const lon = Number(lonText);
+
+            if (city === "") {
+                alert("Please enter a city name.");
+                showLog("Validation Error: City name is empty.");
+                return;
+            }
+
+            if (latText === "" || !Number.isFinite(lat) ||
+                lat < -90 || lat > 90) {
+                alert("Enter a valid latitude between -90 and 90.");
+                showLog("Validation Error: Invalid latitude.");
+                return;
+            }
+
+            if (lonText === "" || !Number.isFinite(lon) ||
+                lon < -180 || lon > 180) {
+                alert("Enter a valid longitude between -180 and 180.");
+                showLog("Validation Error: Invalid longitude.");
+                return;
+            }
+
+            const url =
+                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m`;
+
+            showLog("Sending GET request to Weather API...");
+
+            document.getElementById("weatherOutput").innerHTML =
+                "<p>Loading live weather information...</p>";
+
+            try {
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error("HTTP Error: " + response.status);
+                }
+
+                const data = await response.json();
+
+                if (!data.current) {
+                    throw new Error("Weather information is unavailable.");
+                }
+
+                showLog("API Success: Weather data received for " + city);
+
+                displayWeather(city, data);
+
+            } catch (error) {
+
+                showLog("API Error: " + error.message);
+
+                document.getElementById("weatherOutput").innerHTML =
+                    `<p style="color:red;font-weight:bold;">
+                        Unable to fetch weather data: ${error.message}
+                    </p>`;
+            }
+        }
+
+        function displayWeather(city, data) {
+
+            const weather = data.current;
+            const units = data.current_units;
+
+            let message = "";
+
+            if (weather.temperature_2m >= 35) {
+                message = "High temperature! Stay hydrated and avoid direct sunlight.";
+            } else if (weather.temperature_2m <= 15) {
+                message = "Cool weather! Consider wearing warm clothes.";
+            } else {
+                message = "Weather conditions are moderate. Have a nice day!";
+            }
+
+            document.getElementById("weatherOutput").innerHTML = `
+                <h3>📍 Live Weather Report: ${city}</h3>
+
+                <p>Last Updated: ${weather.time}</p>
+
+                <div class="weather-grid">
+
+                    <div class="weather-card">
+                        <h3>🌡 Temperature</h3>
+                        <div class="value">
+                            ${weather.temperature_2m} ${units.temperature_2m}
+                        </div>
+                    </div>
+
+                    <div class="weather-card">
+                        <h3>💧 Humidity</h3>
+                        <div class="value">
+                            ${weather.relative_humidity_2m} ${units.relative_humidity_2m}
+                        </div>
+                    </div>
+
+                    <div class="weather-card">
+                        <h3>💨 Wind Speed</h3>
+                        <div class="value">
+                            ${weather.wind_speed_10m} ${units.wind_speed_10m}
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="status">
+                    🌍 Weather Status: ${message}
+                </div>
+            `;
+        }
+    </script>
+
+</body>
+</html>
